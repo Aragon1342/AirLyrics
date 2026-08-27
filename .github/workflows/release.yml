@@ -1,0 +1,40 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Se activa al subir un tag con formato v* (ej: v1.0.0)
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write # Necesario para crear releases y subir archivos
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Publicar aplicación (Standalone Single-File .EXE)
+      run: |
+        dotnet publish src/AirLyrics.App/AirLyrics.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o ./publish
+
+    - name: Comprimir archivos de salida en ZIP
+      run: |
+        Compress-Archive -Path ./publish/AirLyrics.exe -DestinationPath ./AirLyrics-Windows-x64.zip
+
+    - name: Crear Release en GitHub y subir ejecutables
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./AirLyrics-Windows-x64.zip
+          ./publish/AirLyrics.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

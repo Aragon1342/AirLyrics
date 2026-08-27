@@ -1,0 +1,370 @@
+<Window x:Class="AirLyrics.App.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AirLyrics Overlay"
+        Icon="pack://application:,,,/logo.png"
+        Height="500" Width="600"
+        MinHeight="220" MinWidth="280"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Estilos para botones de cabecera -->
+        <Style x:Key="HeaderBtn" TargetType="Button">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#334155"/>
+                                <Setter Property="BorderBrush" Value="#475569"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Botones de muestra de color dentro del Popup -->
+        <Style x:Key="ColorSwatchBtn" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="11" 
+                                BorderBrush="#64748B" 
+                                BorderThickness="1"
+                                x:Name="SwatchBorder"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SwatchBorder" Property="BorderBrush" Value="#FFFFFF"/>
+                                <Setter TargetName="SwatchBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Degradado Arcoíris para el Slider de Tono (Hue) -->
+        <LinearGradientBrush x:Key="RainbowBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+            <GradientStop Color="#FF0000" Offset="0.0"/>
+            <GradientStop Color="#FFFF00" Offset="0.17"/>
+            <GradientStop Color="#00FF00" Offset="0.33"/>
+            <GradientStop Color="#00FFFF" Offset="0.50"/>
+            <GradientStop Color="#0000FF" Offset="0.67"/>
+            <GradientStop Color="#FF00FF" Offset="0.83"/>
+            <GradientStop Color="#FF0000" Offset="1.0"/>
+        </LinearGradientBrush>
+
+        <!-- Sombra de texto adaptativa para alta legibilidad -->
+        <DropShadowEffect x:Key="LyricTextShadow" 
+                          BlurRadius="10" 
+                          ShadowDepth="2" 
+                          Color="Black" 
+                          Opacity="0.95"/>
+    </Window.Resources>
+
+    <!-- Contenedor Principal -->
+    <Grid>
+        <!-- Bordes de redimensionamiento nativo -->
+        <Rectangle x:Name="ResizeTop" Height="6" VerticalAlignment="Top" Cursor="SizeNS" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="3"/>
+        <Rectangle x:Name="ResizeBottom" Height="6" VerticalAlignment="Bottom" Cursor="SizeNS" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="6"/>
+        <Rectangle x:Name="ResizeLeft" Width="6" HorizontalAlignment="Left" Cursor="SizeWE" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="1"/>
+        <Rectangle x:Name="ResizeRight" Width="6" HorizontalAlignment="Right" Cursor="SizeWE" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="2"/>
+        
+        <Rectangle x:Name="ResizeTopLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="4"/>
+        <Rectangle x:Name="ResizeTopRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="5"/>
+        <Rectangle x:Name="ResizeBottomLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="7"/>
+        <Rectangle x:Name="ResizeBottomRight" Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Fill="Transparent" PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown" Tag="8"/>
+
+        <Border x:Name="RootBorder"
+                CornerRadius="14"
+                Background="#0F172A"
+                BorderBrush="#334155"
+                BorderThickness="1"
+                Padding="14"
+                MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Cabecera Compacta -->
+                    <RowDefinition Height="*"/>    <!-- Contenedor de Letras con Scroll -->
+                    <RowDefinition Height="Auto"/> <!-- Información de Canción / Artista / Álbum -->
+                </Grid.RowDefinitions>
+
+                <!-- Cabecera de Control Ultra-Compacta (Solo en Modo Edición) -->
+                <Grid Grid.Row="0" x:Name="ControlHeader" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Logo con imagen oficial -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <Border Width="20" Height="20" CornerRadius="10" ClipToBounds="True" Margin="0,0,6,0">
+                            <Image Source="pack://application:,,,/logo.png" Stretch="UniformToFill"/>
+                        </Border>
+                        <TextBlock Text="AirLyrics" 
+                                   FontWeight="Bold" 
+                                   FontSize="13" 
+                                   Foreground="#38BDF8" 
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <!-- Botón Único de Color (Abre el Popup completo con presets y sliders) -->
+                        <Button x:Name="ColorPickerButton"
+                                Style="{StaticResource HeaderBtn}" 
+                                Click="ToggleColorSliderPopup_Click" 
+                                ToolTip="Elegir color de la letra"
+                                Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border x:Name="CurrentColorIndicator" 
+                                        Width="12" Height="12" 
+                                        CornerRadius="6" 
+                                        Background="#38BDF8" 
+                                        BorderBrush="#FFFFFF" 
+                                        BorderThickness="1"
+                                        Margin="0,0,4,0"/>
+                                <TextBlock Text="Color" FontSize="11" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Popup con Presets y Sliders de Color -->
+                        <Popup x:Name="ColorSliderPopup" 
+                               Placement="Bottom" 
+                               StaysOpen="False" 
+                               AllowsTransparency="True">
+                            <Border Background="#0F172A" 
+                                    BorderBrush="#334155" 
+                                    BorderThickness="1" 
+                                    CornerRadius="12" 
+                                    Padding="14" 
+                                    Width="270"
+                                    Margin="0,6,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Colores Predeterminados:" 
+                                               FontWeight="SemiBold" 
+                                               FontSize="11" 
+                                               Foreground="#94A3B8" 
+                                               Margin="0,0,0,8"/>
+
+                                    <!-- Fila de colores rápidos -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#38BDF8" Tag="#38BDF8" Click="ColorSwatch_Click" ToolTip="Azul Neón"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#1DB954" Tag="#1DB954" Click="ColorSwatch_Click" ToolTip="Verde Spotify"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#FACC15" Tag="#FACC15" Click="ColorSwatch_Click" ToolTip="Amarillo"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#C084FC" Tag="#C084FC" Click="ColorSwatch_Click" ToolTip="Púrpura"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#FB7185" Tag="#FB7185" Click="ColorSwatch_Click" ToolTip="Rosa"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#FFFFFF" Tag="#FFFFFF" Click="ColorSwatch_Click" ToolTip="Blanco"/>
+                                        <Button Style="{StaticResource ColorSwatchBtn}" Background="#000000" Tag="#000000" Click="ColorSwatch_Click" ToolTip="Negro"/>
+                                    </StackPanel>
+
+                                    <!-- Separador sutil -->
+                                    <Border Height="1" Background="#334155" Margin="0,0,0,10"/>
+
+                                    <!-- Slider de Tono (Hue Arcoíris) -->
+                                    <TextBlock Text="Personalizado (Tono):" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,3"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Border Height="10" CornerRadius="5" Background="{StaticResource RainbowBrush}" VerticalAlignment="Center"/>
+                                        <Slider x:Name="HueSlider" 
+                                                Minimum="0" Maximum="360" Value="198" 
+                                                Background="Transparent"/>
+                                    </Grid>
+
+                                    <!-- Slider de Brillo -->
+                                    <TextBlock Text="Brillo / Luminosidad:" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,3"/>
+                                    <Slider x:Name="LightnessSlider" 
+                                            Minimum="0.0" Maximum="1.0" Value="0.6" SmallChange="0.05"
+                                            Margin="0,0,0,10"/>
+
+                                    <!-- Vista previa y código Hex -->
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="ColorPreviewBox" 
+                                                Width="22" Height="22" 
+                                                CornerRadius="5" 
+                                                Background="#38BDF8" 
+                                                BorderBrush="#64748B" 
+                                                BorderThickness="1"/>
+                                        <TextBlock x:Name="HexCodeText" 
+                                                   Grid.Column="1" 
+                                                   Text="#38BDF8" 
+                                                   Foreground="#F8FAFC" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="12" 
+                                                   VerticalAlignment="Center" 
+                                                   Margin="8,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
+
+                        <!-- Control de Tamaño de Letra (A- / A+) -->
+                        <Border Background="#1E293B" CornerRadius="6" BorderBrush="#334155" BorderThickness="1" Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource HeaderBtn}" 
+                                        Content="A-" 
+                                        Click="DecreaseFontSize_Click" 
+                                        ToolTip="Reducir tamaño"
+                                        BorderThickness="0"
+                                        Padding="5,2"/>
+                                <TextBlock x:Name="FontSizeLabel" 
+                                           Text="22px" 
+                                           Foreground="#94A3B8" 
+                                           FontSize="10" 
+                                           VerticalAlignment="Center" 
+                                           Margin="3,0,3,0"/>
+                                <Button Style="{StaticResource HeaderBtn}" 
+                                        Content="A+" 
+                                        Click="IncreaseFontSize_Click" 
+                                        ToolTip="Aumentar tamaño"
+                                        BorderThickness="0"
+                                        Padding="5,2"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Botón de Spotify -->
+                        <Button x:Name="SpotifyConnectButton"
+                                Style="{StaticResource HeaderBtn}" 
+                                Content="🟢" 
+                                Click="SpotifyConnect_Click" 
+                                ToolTip="Gestionar conexión con Spotify"
+                                Margin="0,0,4,0"/>
+
+                        <!-- Alternar Modo Fantasma -->
+                        <Button Style="{StaticResource HeaderBtn}" 
+                                Content="👻" 
+                                Click="ToggleGhost_Click" 
+                                ToolTip="Modo Fantasma (Ctrl+Alt+G)"
+                                Margin="0,0,4,0"/>
+                        
+                        <!-- Botón de Ajustes -->
+                        <Button Style="{StaticResource HeaderBtn}" 
+                                Content="⚙️" 
+                                Click="SettingsButton_Click" 
+                                ToolTip="Ajustes (Atajo Fantasma, etc.)"
+                                Margin="0,0,4,0"/>
+
+                        <!-- Cerrar -->
+                        <Button Style="{StaticResource HeaderBtn}" 
+                                Content="✕" 
+                                FontWeight="Bold" 
+                                Background="#DC2626"
+                                BorderBrush="#EF4444"
+                                Click="CloseButton_Click" 
+                                ToolTip="Cerrar AirLyrics"/>
+                    </WrapPanel>
+                </Grid>
+
+                <!-- Área Central de Letras Sincronizadas -->
+                <Grid Grid.Row="1">
+                    <!-- Vista cuando no hay canción o buscando letras -->
+                    <StackPanel x:Name="EmptyStatePanel" 
+                                VerticalAlignment="Center" 
+                                HorizontalAlignment="Center"
+                                Visibility="Collapsed">
+                        <TextBlock x:Name="EmptyStateTitle" 
+                                   Text="AirLyrics" 
+                                   FontSize="20" 
+                                   FontWeight="Bold" 
+                                   Foreground="#FFFFFF" 
+                                   Effect="{StaticResource LyricTextShadow}"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"/>
+                        
+                        <TextBlock x:Name="EmptyStateSubtitle" 
+                                   Text="Reproduce una canción en Spotify" 
+                                   FontSize="13" 
+                                   Foreground="#38BDF8" 
+                                   Effect="{StaticResource LyricTextShadow}"
+                                   Margin="0,4,0,0" 
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Lista con Auto-Scroll de Letras -->
+                    <ScrollViewer x:Name="LyricsScrollViewer"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Focusable="False">
+                        <StackPanel x:Name="LyricsContainer" 
+                                    Margin="0,30,0,30"
+                                    HorizontalAlignment="Stretch"/>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Barra Inferior: Canción, Artista y Álbum Grande, Blanco Puro y Ultra-Legible -->
+                <Grid Grid.Row="2" x:Name="StatusFooter" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Información Detallada y Grande de la Canción -->
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                        <!-- Título de la Canción (Grande, Blanco Puro, Negrita) -->
+                        <TextBlock x:Name="TrackTitleBanner" 
+                                   Text="AirLyrics" 
+                                   FontSize="15" 
+                                   FontWeight="Bold" 
+                                   Foreground="#FFFFFF"
+                                   Effect="{StaticResource LyricTextShadow}"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <!-- Artista y Álbum (Blanco suave / Cyan claro, Claro y Legible) -->
+                        <TextBlock x:Name="TrackArtistAlbumBanner" 
+                                   Text="Conecta Spotify para comenzar" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold"
+                                   Foreground="#E2E8F0"
+                                   Effect="{StaticResource LyricTextShadow}"
+                                   Margin="0,2,0,0"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+
+                    <!-- Grip visual de escala en la esquina inferior derecha -->
+                    <TextBlock x:Name="ResizeGripIcon"
+                               Grid.Column="1" 
+                               Text="◢" 
+                               FontSize="14" 
+                               Foreground="#64748B" 
+                               Cursor="SizeNWSE"
+                               VerticalAlignment="Bottom"
+                               Margin="0,0,-4,-4"
+                               PreviewMouseLeftButtonDown="Resize_PreviewMouseLeftButtonDown"
+                               Tag="8"
+                               ToolTip="Arrastra para redimensionar"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
